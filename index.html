@@ -130,7 +130,6 @@
   </section>
 
   <script>
-    // 預設載入你實際持有的 5 檔標的（請在網頁上方修改為你的真實股數與均價）
     const DEFAULT_HOLDINGS = [
       { code: "00631L", name: "元大台灣50正2", shares: 1000, cost: 200.0, currentPrice: null, dayChangePct: null, ma20: null },
       { code: "009816", name: "凱基台灣TOP50", shares: 5000, cost: 10.0, currentPrice: null, dayChangePct: null, ma20: null },
@@ -308,53 +307,94 @@
       };
     }
 
-    async function fetchYahooQuote(symbol) {
-      const suffixes = symbol === "^TWII" ? [""] : [".TW", ".TWO"];
-      for (const sfx of suffixes) {
-        const ticker = encodeURIComponent(symbol + sfx);
-        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1mo&interval=1d`;
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+    // 帶逾時控制的多代理通道請求器（避免單一代理卡死）
+    async function fetchWithMultiProxy(targetUrl) {
+      const proxies = [
+        url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+        url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+        url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+      ];
+
+      for (const buildProxy of proxies) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 7000);
         try {
-          const res = await fetch(proxyUrl);
+          const res = await fetch(buildProxy(targetUrl), { signal: controller.signal });
+          clearTimeout(timer);
           if (!res.ok) continue;
           const json = await res.json();
-          const result = json.chart && json.chart.result && json.chart.result[0];
-          if (!result || !result.timestamp) continue;
-
-          const rawCloses = result.indicators.quote[0].close;
-          const validPairs = [];
-          for (let i = 0; i < rawCloses.length; i++) {
-            if (typeof rawCloses[i] === "number" && rawCloses[i] > 0) {
-              validPairs.push({ close: rawCloses[i], ts: result.timestamp[i] });
-            }
+          if (json && json.chart && json.chart.result && json.chart.result[0]) {
+            return json.chart.result[0];
           }
-          if (validPairs.length < 5) continue;
-
-          const closes = validPairs.map(p => p.close);
-          const meta = result.meta;
-          const latestPrice = meta.regularMarketPrice || closes[closes.length - 1];
-          const prevClose = closes.length >= 2 ? closes[closes.length - 2] : (meta.chartPreviousClose || latestPrice);
-          const dayChangePct = ((latestPrice - prevClose) / prevClose) * 100;
-
-          const slice20 = closes.slice(-20);
-          const ma20 = slice20.reduce((a, b) => a + b, 0) / slice20.length;
-
-          const basePrice = slice20[0];
-          const cumReturnSeries = slice20.map(p => parseFloat((((p - basePrice) / basePrice) * 100).toFixed(2)));
-          const dates = validPairs.slice(-20).map(p => {
-            const d = new Date(p.ts * 1000);
-            return `${d.getMonth() + 1}/${d.getDate()}`;
-          });
-
-          return { latestPrice, dayChangePct, ma20, cumReturnSeries, dates };
         } catch (e) {
+          clearTimeout(timer);
           continue;
         }
       }
       return null;
     }
 
-    // 本地智慧規則保底生成（確保即使無 API Key 或網路波動也絕對不會報錯中斷）
+    // 抓取近 1 個月精準日K與盤中報價（自動嘗試 .TW 與 .TWO）
+    async function fetchStockData(symbol) {
+      const suffixes = symbol === "^TWII" ? [""] : [".TW", ".TWO"];
+      for (const sfx of suffixes) {
+        const ticker = encodeURIComponent(symbol + sfx);
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1mo&interval=1d`;
+        const result = await fetchWithMultiProxy(targetUrl);
+        if (!result || !result.timestamp) continue;
+
+        const rawCloses = result.indicators.quote[0].close;
+        const validPairs = [];
+        for (let i = 0; i < rawCloses.length; i++) {
+          if (typeof rawCloses[i] === "number" && rawCloses[i] > 0) {
+            validPairs.push({ close: rawCloses[i], ts: result.timestamp[i] });
+          }
+        }
+        if (validPairs.length < 5) continue;
+
+        const closes = validPairs.map(p => p.close);
+        const meta = result.meta;
+        const latestPrice = meta.regularMarketPrice || closes[closes.length - 1];
+        const prevClose = closes.length >= 2 ? closes[closes.length - 2] : (meta.chartPreviousClose || latestPrice);
+        const dayChangePct = ((latestPrice - prevClose) / prevClose) * 100;
+
+        const slice20 = closes.slice(-20);
+        const ma20 = slice20.reduce((a, b) => a + b, 0) / slice20.length;
+
+        const basePrice = slice20[0];
+        const cumReturnSeries = slice20.map(p => parseFloat((((p - basePrice) / basePrice) * 100).toFixed(2)));
+        const dates = validPairs.slice(-20).map(p => {
+          const d = new Date(p.ts * 1000);
+          return `${d.getMonth() + 1}/${d.getDate()}`;
+        });
+
+        return { latestPrice, dayChangePct, ma20, cumReturnSeries, dates };
+      }
+      return null;
+    }
+
+    // 備援通道：直接連線台灣證交所官方 OpenAPI（原生支援瀏覽器直連，不需代理）
+    async function fetchTwseOfficialFallback() {
+      try {
+        const res = await fetch("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL");
+        if (!res.ok) return {};
+        const list = await res.json();
+        const map = {};
+        list.forEach(item => {
+          const price = parseFloat(item.ClosingPrice);
+          const change = parseFloat(item.Change);
+          if (!isNaN(price) && price > 0) {
+            const prev = !isNaN(change) ? (price - change) : price;
+            const pct = prev > 0 ? ((price - prev) / prev) * 100 : 0;
+            map[item.Code] = { latestPrice: price, dayChangePct: pct };
+          }
+        });
+        return map;
+      } catch {
+        return {};
+      }
+    }
+
     function buildRuleBasedAnalysis() {
       let totalVal = 0;
       let weightedBias = 0;
@@ -374,7 +414,7 @@
 
         let adviceText = "";
         if (bias === null) {
-          adviceText = "暫無完整 20 日均線資料，建議觀察近五日量價結構與均價成本支撐。";
+          adviceText = "已同步最新官方收盤價，目前缺少 20 日均線歷史序列，建議搭配均價成本設定移動停利點。";
         } else if (bias >= 8) {
           adviceText = `20日正乖離達 +${bias.toFixed(1)}%，短線明顯過熱，切忌追高，可考慮分批獲利了結鎖定波段利潤。`;
         } else if (bias > 0) {
@@ -385,8 +425,8 @@
           adviceText = `目前位於月線（${h.ma20.toFixed(1)}）下方整理，乖離 ${bias.toFixed(1)}%，未帶量突破月線前宜保守觀望。`;
         }
 
-        if (pnlPct >= 15) adviceText += `（目前帳面獲利 +${pnlPct.toFixed(1)}%，具備充足安全邊際）`;
-        if (pnlPct <= -10) adviceText += `（目前帳面虧損 ${pnlPct.toFixed(1)}%，留意資金控管）`;
+        if (pnlPct >= 15) adviceText += `（帳面獲利 +${pnlPct.toFixed(1)}%，具備充足安全邊際）`;
+        if (pnlPct <= -10) adviceText += `（帳面虧損 ${pnlPct.toFixed(1)}%，留意資金控管）`;
 
         return { code: h.code, actionAdvice: adviceText };
       });
@@ -434,14 +474,14 @@
 
       const btn = document.getElementById("analyzeBtn");
       btn.disabled = true;
-      btn.innerHTML = `<span>⏳ 抓取真實行情與20MA中...</span>`;
+      btn.innerHTML = `<span>⏳ 多通道抓取即時報價中...</span>`;
 
       const session = getTaiwanMarketSession();
       document.getElementById("marketStatusBadge").innerText = session.label;
 
       try {
-        const taiexData = await fetchYahooQuote("^TWII");
-        const stockQuotes = await Promise.all(holdings.map(h => fetchYahooQuote(h.code)));
+        const taiexData = await fetchStockData("^TWII");
+        const stockQuotes = await Promise.all(holdings.map(h => fetchStockData(h.code)));
 
         let validCount = 0;
         holdings.forEach((h, idx) => {
@@ -454,8 +494,20 @@
           }
         });
 
+        // 若多代理通道部分失敗，啟動證交所官方 OpenAPI 直連補齊報價
+        if (validCount < holdings.length) {
+          const twseMap = await fetchTwseOfficialFallback();
+          holdings.forEach(h => {
+            if (!h.currentPrice && twseMap[h.code]) {
+              h.currentPrice = twseMap[h.code].latestPrice;
+              h.dayChangePct = twseMap[h.code].dayChangePct;
+              validCount++;
+            }
+          });
+        }
+
         if (validCount === 0) {
-          throw new Error("無法連線取得報價，請確認網路連線後再試。");
+          throw new Error("所有行情節點暫時無回應，請稍後幾秒再點擊一次更新。");
         }
         saveHoldings();
 
@@ -474,7 +526,7 @@
         const summaryPayload = holdings.map(h => {
           const bias = calcBias20(h.currentPrice, h.ma20);
           const pnlPct = h.currentPrice ? (((h.currentPrice - h.cost) / h.cost) * 100).toFixed(2) : "未知";
-          return `${h.code} ${h.name}: 成本=${h.cost}, 現價=${h.currentPrice?.toFixed(2)}, 20MA=${h.ma20?.toFixed(2)}, 20日乖離=${bias?.toFixed(2)}%, 報酬=${pnlPct}%`;
+          return `${h.code} ${h.name}: 成本=${h.cost}, 現價=${h.currentPrice?.toFixed(2)}, 20MA=${h.ma20?.toFixed(2) || "無"}, 20日乖離=${bias?.toFixed(2) || "無"}%, 報酬=${pnlPct}%`;
         }).join("\n");
 
         const apiKey = localStorage.getItem("gemini_api_key");
