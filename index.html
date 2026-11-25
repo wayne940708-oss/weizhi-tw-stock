@@ -27,7 +27,7 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-      <input type="password" id="apiKeyInput" placeholder="輸入 Gemini API Key" class="input-dark text-sm w-44 md:w-56" />
+      <input type="password" id="apiKeyInput" placeholder="輸入 Gemini API Key (選填)" class="input-dark text-sm w-48 md:w-56" />
       <button onclick="saveApiKey()" class="bg-gray-700 hover:bg-gray-600 text-white text-sm px-3 py-1.5 rounded">儲存 Key</button>
       <button id="analyzeBtn" onclick="runAnalysis()" class="bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-4 py-1.5 rounded flex items-center gap-1.5 shadow-lg shadow-blue-900/30">
         <span>⚡ 聯網更新即時分析</span>
@@ -93,7 +93,7 @@
     <div class="card p-4">
       <div class="text-xs text-gray-400">加權指數 (TAIEX)</div>
       <div id="kpiIndexInfo" class="text-base md:text-lg font-bold text-white mt-1">等待更新...</div>
-      <div id="kpiInstitutional" class="text-xs text-gray-400 mt-1">近20日報酬：--</div>
+      <div id="kpiInstitutional" class="text-xs text-gray-400 mt-1">近20日波段表現：--</div>
     </div>
   </section>
 
@@ -115,7 +115,7 @@
       <div>
         <h3 class="text-sm font-semibold text-gray-300 mb-3">🌐 投組結構與乖離位階總評</h3>
         <div id="macroSummary" class="text-sm text-gray-300 space-y-2.5 leading-relaxed">
-          <p class="text-gray-500">點擊「聯網更新即時分析」後，系統將自動抓取真實股價與月線數據，並由 AI 生成位階診斷。</p>
+          <p class="text-gray-500">請先在上方調整為你的真實持股與均價，再點擊「聯網更新即時分析」取得最新報價與乖離位階診斷。</p>
         </div>
       </div>
       <div id="riskAlertBox" class="mt-4 p-3 rounded bg-amber-950/40 border border-amber-800/50 text-xs text-amber-200 hidden"></div>
@@ -130,14 +130,16 @@
   </section>
 
   <script>
+    // 預設載入你實際持有的 5 檔標的（請在網頁上方修改為你的真實股數與均價）
     const DEFAULT_HOLDINGS = [
-      { code: "00631L", name: "元大台灣50正2", shares: 1000, cost: 220.0, currentPrice: null, dayChangePct: null, ma20: null },
-      { code: "00981A", name: "主動統一台股增長", shares: 5000, cost: 10.5, currentPrice: null, dayChangePct: null, ma20: null },
-      { code: "3035", name: "智原", shares: 1000, cost: 245.0, currentPrice: null, dayChangePct: null, ma20: null },
-      { code: "6488", name: "環球晶", shares: 500, cost: 380.0, currentPrice: null, dayChangePct: null, ma20: null }
+      { code: "00631L", name: "元大台灣50正2", shares: 1000, cost: 200.0, currentPrice: null, dayChangePct: null, ma20: null },
+      { code: "009816", name: "凱基台灣TOP50", shares: 5000, cost: 10.0, currentPrice: null, dayChangePct: null, ma20: null },
+      { code: "3035", name: "智原", shares: 1000, cost: 198.5, currentPrice: null, dayChangePct: null, ma20: null },
+      { code: "6488", name: "環球晶", shares: 500, cost: 400.0, currentPrice: null, dayChangePct: null, ma20: null },
+      { code: "5425", name: "台半", shares: 1000, cost: 65.0, currentPrice: null, dayChangePct: null, ma20: null }
     ];
 
-    let holdings = JSON.parse(localStorage.getItem("tw_stock_holdings")) || DEFAULT_HOLDINGS;
+    let holdings = JSON.parse(localStorage.getItem("tw_stock_holdings_v2")) || DEFAULT_HOLDINGS;
     let chartInstance = null;
     let lastChartData = null;
     let currentChartMode = "return";
@@ -157,7 +159,7 @@
     }
 
     function saveHoldings() {
-      localStorage.setItem("tw_stock_holdings", JSON.stringify(holdings));
+      localStorage.setItem("tw_stock_holdings_v2", JSON.stringify(holdings));
       renderHoldingsTable();
       updateKpiCards();
     }
@@ -259,11 +261,12 @@
       let totalVal = 0;
       let weightedBiasSum = 0;
       let biasWeightVal = 0;
-      let allHavePrice = holdings.length > 0;
+      let anyPrice = false;
 
       holdings.forEach(h => {
         totalCost += h.shares * h.cost;
         if (typeof h.currentPrice === "number" && h.currentPrice > 0) {
+          anyPrice = true;
           const val = h.shares * h.currentPrice;
           totalVal += val;
           const b = calcBias20(h.currentPrice, h.ma20);
@@ -272,12 +275,12 @@
             biasWeightVal += val;
           }
         } else {
-          allHavePrice = false;
+          totalVal += h.shares * h.cost;
         }
       });
 
       document.getElementById("kpiTotalCost").innerText = `$${Math.round(totalCost).toLocaleString()}`;
-      if (allHavePrice && totalCost > 0) {
+      if (anyPrice && totalCost > 0) {
         const pnl = Math.round(totalVal - totalCost);
         const pnlPct = ((pnl / totalCost) * 100).toFixed(2);
         const cls = pnl >= 0 ? "up" : "down";
@@ -305,7 +308,6 @@
       };
     }
 
-    // 透過 Yahoo Finance 公開接口抓取近 1 個月精準日K與盤中報價（自動嘗試 .TW 與 .TWO）
     async function fetchYahooQuote(symbol) {
       const suffixes = symbol === "^TWII" ? [""] : [".TW", ".TWO"];
       for (const sfx of suffixes) {
@@ -319,24 +321,28 @@
           const result = json.chart && json.chart.result && json.chart.result[0];
           if (!result || !result.timestamp) continue;
 
-          const closes = result.indicators.quote[0].close.filter(v => typeof v === "number");
-          const timestamps = result.timestamp;
-          if (closes.length < 5) continue;
+          const rawCloses = result.indicators.quote[0].close;
+          const validPairs = [];
+          for (let i = 0; i < rawCloses.length; i++) {
+            if (typeof rawCloses[i] === "number" && rawCloses[i] > 0) {
+              validPairs.push({ close: rawCloses[i], ts: result.timestamp[i] });
+            }
+          }
+          if (validPairs.length < 5) continue;
 
+          const closes = validPairs.map(p => p.close);
           const meta = result.meta;
           const latestPrice = meta.regularMarketPrice || closes[closes.length - 1];
-          const prevClose = meta.chartPreviousClose || closes[closes.length - 2];
+          const prevClose = closes.length >= 2 ? closes[closes.length - 2] : (meta.chartPreviousClose || latestPrice);
           const dayChangePct = ((latestPrice - prevClose) / prevClose) * 100;
 
-          // 精準計算 20MA
           const slice20 = closes.slice(-20);
           const ma20 = slice20.reduce((a, b) => a + b, 0) / slice20.length;
 
-          // 近20日累計報酬率序列
           const basePrice = slice20[0];
           const cumReturnSeries = slice20.map(p => parseFloat((((p - basePrice) / basePrice) * 100).toFixed(2)));
-          const dates = timestamps.slice(-20).map(ts => {
-            const d = new Date(ts * 1000);
+          const dates = validPairs.slice(-20).map(p => {
+            const d = new Date(p.ts * 1000);
             return `${d.getMonth() + 1}/${d.getDate()}`;
           });
 
@@ -348,9 +354,82 @@
       return null;
     }
 
+    // 本地智慧規則保底生成（確保即使無 API Key 或網路波動也絕對不會報錯中斷）
+    function buildRuleBasedAnalysis() {
+      let totalVal = 0;
+      let weightedBias = 0;
+      let maxBiasStock = null;
+
+      const advices = holdings.map(h => {
+        const bias = calcBias20(h.currentPrice, h.ma20);
+        const pnlPct = h.currentPrice ? ((h.currentPrice - h.cost) / h.cost) * 100 : 0;
+        const val = (h.currentPrice || h.cost) * h.shares;
+        totalVal += val;
+        if (bias !== null) {
+          weightedBias += bias * val;
+          if (!maxBiasStock || Math.abs(bias) > Math.abs(maxBiasStock.bias)) {
+            maxBiasStock = { code: h.code, name: h.name, bias };
+          }
+        }
+
+        let adviceText = "";
+        if (bias === null) {
+          adviceText = "暫無完整 20 日均線資料，建議觀察近五日量價結構與均價成本支撐。";
+        } else if (bias >= 8) {
+          adviceText = `20日正乖離達 +${bias.toFixed(1)}%，短線明顯過熱，切忌追高，可考慮分批獲利了結鎖定波段利潤。`;
+        } else if (bias > 0) {
+          adviceText = `股價站穩月線（20MA ${h.ma20.toFixed(1)}）之上，乖離 +${bias.toFixed(1)}% 屬健康多頭格局，續抱並以月線為防守點。`;
+        } else if (bias <= -8) {
+          adviceText = `20日負乖離擴大至 ${bias.toFixed(1)}%，短線超跌且技術面偏弱，靜待止跌紅K站回五日線再考慮攤平。`;
+        } else {
+          adviceText = `目前位於月線（${h.ma20.toFixed(1)}）下方整理，乖離 ${bias.toFixed(1)}%，未帶量突破月線前宜保守觀望。`;
+        }
+
+        if (pnlPct >= 15) adviceText += `（目前帳面獲利 +${pnlPct.toFixed(1)}%，具備充足安全邊際）`;
+        if (pnlPct <= -10) adviceText += `（目前帳面虧損 ${pnlPct.toFixed(1)}%，留意資金控管）`;
+
+        return { code: h.code, actionAdvice: adviceText };
+      });
+
+      const avgBias = totalVal > 0 ? (weightedBias / totalVal).toFixed(2) : "0.00";
+      const macroCommentary = `目前投資組合加權 20日乖離率為 ${avgBias >= 0 ? '+' : ''}${avgBias}%。槓桿 ETF（如 00631L）與半導體供應鏈個股波動較大，建議嚴守月線位階進行動態加減碼。`;
+      const riskWarning = maxBiasStock
+        ? `${maxBiasStock.code} (${maxBiasStock.name}) 目前 20日乖離率達 ${maxBiasStock.bias >= 0 ? '+' : ''}${maxBiasStock.bias.toFixed(2)}%，為投組中偏離月線幅度最大的標的，請優先留意均值回歸風險。`
+        : "請持續追蹤美股費半指數與台積電 ADR 連動表現。";
+
+      return { macroCommentary, riskWarning, advices };
+    }
+
+    async function callGeminiWithFallback(apiKey, summaryPayload) {
+      const models = ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"];
+      const systemPrompt = `你是資深台股與半導體ETF投資分析師。請根據使用者提供的真實即時行情、成本損益與 20日乖離率數據，給出精準操作建議。嚴格以純 JSON 格式回覆（不要加 markdown 標記）：
+{"macroCommentary":"整體投組與乖離位階總評(約90字內)","riskWarning":"一句話點出最大風險提示","advices":[{"code":"代號","actionAdvice":"結合20日乖離率與成本位階的具體加減碼建議(約55字內)"}]}`;
+
+      for (const model of models) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ parts: [{ text: summaryPayload }] }],
+              generationConfig: { temperature: 0.3 }
+            })
+          });
+          if (!res.ok) continue;
+          const json = await res.json();
+          if (json.error || !json.candidates) continue;
+          let rawText = json.candidates[0].content.parts.map(p => p.text || "").join("");
+          rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+          return JSON.parse(rawText);
+        } catch (e) {
+          continue;
+        }
+      }
+      return null;
+    }
+
     async function runAnalysis() {
-      const apiKey = localStorage.getItem("gemini_api_key");
-      if (!apiKey) return alert("請先在上方輸入並儲存你的 Gemini API Key！");
       if (holdings.length === 0) return alert("請先新增至少一檔持股！");
 
       const btn = document.getElementById("analyzeBtn");
@@ -361,7 +440,6 @@
       document.getElementById("marketStatusBadge").innerText = session.label;
 
       try {
-        // 1. 平行抓取加權指數與所有持股的真實報價與近20日K線
         const taiexData = await fetchYahooQuote("^TWII");
         const stockQuotes = await Promise.all(holdings.map(h => fetchYahooQuote(h.code)));
 
@@ -377,7 +455,7 @@
         });
 
         if (validCount === 0) {
-          throw new Error("目前無法連線取得台股即時行情，請稍後再試。");
+          throw new Error("無法連線取得報價，請確認網路連線後再試。");
         }
         saveHoldings();
 
@@ -389,46 +467,23 @@
           document.getElementById("kpiInstitutional").innerText = `近20日波段表現：${mRet >= 0 ? '+' : ''}${mRet}%`;
         }
 
-        // 繪製走勢圖
         lastChartData = { taiexData, stockQuotes };
         renderChart(lastChartData, currentChartMode);
 
-        // 2. 將精準算出的現價、損益、20MA 乖離率交給免費版 Gemini 撰寫策略建議（不觸發付費搜尋配額）
-        btn.innerHTML = `<span>🤖 AI 生成乖離率與策略建議...</span>`;
+        btn.innerHTML = `<span>🤖 生成乖離率位階診斷...</span>`;
         const summaryPayload = holdings.map(h => {
           const bias = calcBias20(h.currentPrice, h.ma20);
           const pnlPct = h.currentPrice ? (((h.currentPrice - h.cost) / h.cost) * 100).toFixed(2) : "未知";
-          return `${h.code} ${h.name}: 均價成本=${h.cost}, 現價=${h.currentPrice?.toFixed(2)}, 當日漲跌=${h.dayChangePct?.toFixed(2)}%, 20日均線=${h.ma20?.toFixed(2)}, 20日乖離率=${bias?.toFixed(2)}%, 未實現報酬=${pnlPct}%`;
+          return `${h.code} ${h.name}: 成本=${h.cost}, 現價=${h.currentPrice?.toFixed(2)}, 20MA=${h.ma20?.toFixed(2)}, 20日乖離=${bias?.toFixed(2)}%, 報酬=${pnlPct}%`;
         }).join("\n");
 
-        const systemPrompt = `你是資深台股與半導體ETF投資分析師。請根據使用者提供的真實即時行情、成本損益與 20日乖離率數據，給出簡潔精準的操作建議。
-請嚴格以純 JSON 格式回覆（不要加 \`\`\`json 標記）：
-{
-  "macroCommentary": "針對目前整體投組結構（含槓桿ETF與半導體個股配置）與加權乖離率位階的總體診斷（約100字內）",
-  "riskWarning": "一句話點出目前乖離率過高或波動最大的風險提示",
-  "advices": [
-    { "code": "股票代號", "actionAdvice": "結合該檔20日乖離率與成本位階的具體加減碼/停利停損建議（約55字內）" }
-  ]
-}`;
+        const apiKey = localStorage.getItem("gemini_api_key");
+        let adviceObj = apiKey ? await callGeminiWithFallback(apiKey, summaryPayload) : null;
+        if (!adviceObj) {
+          adviceObj = buildRuleBasedAnalysis();
+        }
 
-        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ parts: [{ text: `以下是我目前的真實持倉與即時報價數據：\n${summaryPayload}` }] }],
-            generationConfig: { temperature: 0.3 }
-          })
-        });
-
-        const aiJson = await aiRes.json();
-        if (aiJson.error) throw new Error(aiJson.error.message);
-
-        let rawText = aiJson.candidates[0].content.parts.map(p => p.text || "").join("");
-        rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-        const adviceObj = JSON.parse(rawText);
-
-        document.getElementById("lastUpdated").innerText = `資料時間：${session.timeStr}（已完成精準行情校準）`;
+        document.getElementById("lastUpdated").innerText = `資料時間：${session.timeStr}（已完成即時校準）`;
         document.getElementById("macroSummary").innerHTML = `<p>${adviceObj.macroCommentary}</p>`;
 
         if (adviceObj.riskWarning) {
