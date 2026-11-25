@@ -78,7 +78,7 @@
     <div class="card p-4">
       <div class="text-xs text-gray-400">總投入成本 (NTD)</div>
       <div id="kpiTotalCost" class="text-xl md:text-2xl font-bold text-white mt-1">--</div>
-      <div class="text-xs text-gray-500 mt-1">精準加總：股數 × 均價</div>
+      <div class="text-xs text-gray-500 mt-1">精準加總：Σ(股數 × 均價)</div>
     </div>
     <div class="card p-4">
       <div class="text-xs text-gray-400">投資組合總現值 (NTD)</div>
@@ -93,20 +93,20 @@
     <div class="card p-4">
       <div class="text-xs text-gray-400">加權指數 (TAIEX)</div>
       <div id="kpiIndexInfo" class="text-base md:text-lg font-bold text-white mt-1">等待更新...</div>
-      <div id="kpiInstitutional" class="text-xs text-gray-400 mt-1">近20日波段表現：--</div>
+      <div id="kpiIndexPts" class="text-xs text-gray-400 mt-1">漲跌點數 / 22日表現：--</div>
     </div>
   </section>
 
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
     <div class="card p-4 lg:col-span-2 flex flex-col justify-between">
       <div class="flex flex-wrap justify-between items-center mb-2 gap-2">
-        <h3 id="chartTitle" class="text-sm font-semibold text-gray-300">📈 近 20 交易日累計報酬率對比 (%)</h3>
+        <h3 id="chartTitle" class="text-sm font-semibold text-gray-300">📈 近一個月（22交易日）多維度累計報酬率對比 (%)</h3>
         <div class="flex gap-1.5">
-          <button id="btnModeReturn" onclick="switchChartMode('return')" class="text-xs px-2.5 py-1 rounded bg-blue-600 text-white">累計報酬率</button>
+          <button id="btnModeReturn" onclick="switchChartMode('return')" class="text-xs px-2.5 py-1 rounded bg-blue-600 text-white">7線累計報酬對比</button>
           <button id="btnModeBias" onclick="switchChartMode('bias')" class="text-xs px-2.5 py-1 rounded bg-gray-800 text-gray-300 hover:bg-gray-700">20日乖離率快照</button>
         </div>
       </div>
-      <div class="relative h-72 w-full">
+      <div class="relative h-80 w-full">
         <canvas id="trendChart"></canvas>
       </div>
     </div>
@@ -115,7 +115,7 @@
       <div>
         <h3 class="text-sm font-semibold text-gray-300 mb-3">🌐 投組結構與乖離位階總評</h3>
         <div id="macroSummary" class="text-sm text-gray-300 space-y-2.5 leading-relaxed">
-          <p class="text-gray-500">貼上 Google Script 網址並儲存後，點擊「立即更新報價與乖離率」即可由 Google 官方機房秒抓數據。</p>
+          <p class="text-gray-500">點擊「立即更新報價與乖離率」取得最新精準加權指數、投組加權曲線與 20MA 乖離診斷。</p>
         </div>
       </div>
       <div id="riskAlertBox" class="mt-4 p-3 rounded bg-amber-950/40 border border-amber-800/50 text-xs text-amber-200 hidden"></div>
@@ -134,9 +134,9 @@
     const DEFAULT_HOLDINGS = [
       { code: "00631L", name: "元大台灣50正2", shares: 1000, cost: 200.0, currentPrice: null, dayChangePct: null, ma20: null },
       { code: "009816", name: "凱基台灣TOP50", shares: 5000, cost: 10.0, currentPrice: null, dayChangePct: null, ma20: null },
-      { code: "3035", name: "智原", shares: 1000, cost: 198.5, currentPrice: null, dayChangePct: null, ma20: null },
-      { code: "6488", name: "環球晶", shares: 500, cost: 400.0, currentPrice: null, dayChangePct: null, ma20: null },
-      { code: "5425", name: "台半", shares: 1000, cost: 65.0, currentPrice: null, dayChangePct: null, ma20: null }
+      { code: "3035", name: "智原", shares: 50, cost: 198.5, currentPrice: null, dayChangePct: null, ma20: null },
+      { code: "6488", name: "環球晶", shares: 50, cost: 754.1, currentPrice: null, dayChangePct: null, ma20: null },
+      { code: "5425", name: "台半", shares: 100, cost: 82.1, currentPrice: null, dayChangePct: null, ma20: null }
     ];
 
     let holdings = JSON.parse(localStorage.getItem("tw_stock_holdings_v2")) || DEFAULT_HOLDINGS;
@@ -386,15 +386,16 @@
           }
         });
 
-        if (validCount === 0) throw new Error("未取得有效報價，請確認 Google Script 部署權限已設為「所有人」。");
+        if (validCount === 0) throw new Error("未取得有效報價，請確認 Google Script 已發布新版本。");
         saveHoldings();
 
         if (taiexData) {
           const tCls = taiexData.dayChangePct >= 0 ? "up" : "down";
           const tSign = taiexData.dayChangePct >= 0 ? "+" : "";
-          document.getElementById("kpiIndexInfo").innerHTML = `${Math.round(taiexData.latestPrice).toLocaleString()} <span class="text-sm ${tCls}">(${tSign}${taiexData.dayChangePct.toFixed(2)}%)</span>`;
+          const pts = typeof taiexData.dayChangePts === "number" ? taiexData.dayChangePts.toFixed(2) : "--";
+          document.getElementById("kpiIndexInfo").innerHTML = `${taiexData.latestPrice.toLocaleString(undefined, {maximumFractionDigits: 2})} <span class="text-sm ${tCls}">(${tSign}${taiexData.dayChangePct.toFixed(2)}%)</span>`;
           const mRet = taiexData.cumReturnSeries[taiexData.cumReturnSeries.length - 1];
-          document.getElementById("kpiInstitutional").innerText = `近20日波段表現：${mRet >= 0 ? '+' : ''}${mRet}%`;
+          document.getElementById("kpiIndexPts").innerHTML = `單日：<span class="${tCls}">${tSign}${pts} 點</span> ｜ 22日：${mRet >= 0 ? '+' : ''}${mRet}%`;
         }
 
         lastChartData = { taiexData, stockQuotes };
@@ -448,7 +449,7 @@
         : "text-xs px-2.5 py-1 rounded bg-gray-800 text-gray-300 hover:bg-gray-700";
 
       document.getElementById("chartTitle").innerText = mode === "return"
-        ? "📈 近 20 交易日累計報酬率對比 (%)"
+        ? "📈 近一個月（22交易日）多維度累計報酬率對比 (%)"
         : "📊 個股即時 20日乖離率 (20MA Bias %) 柱狀對比";
 
       if (lastChartData) renderChart(lastChartData, mode);
@@ -493,11 +494,50 @@
         return;
       }
 
-      const palette = ["#2962ff", "#ef5350", "#26a69a", "#ab47bc", "#ffa726", "#26c6da"];
+      const palette = ["#2962ff", "#ef5350", "#26a69a", "#ab47bc", "#26c6da", "#ff7043"];
       const firstValid = data.stockQuotes.find(q => q && q.dates);
       const labels = (data.taiexData && data.taiexData.dates) || (firstValid && firstValid.dates) || [];
+      const fullDates = (data.taiexData && data.taiexData.fullDates) || (firstValid && firstValid.fullDates) || labels;
 
       const datasets = [];
+
+      // 第 1 條：整體投資組合加權累計報酬率主曲線
+      const seriesLen = labels.length;
+      if (seriesLen > 0) {
+        const portfolioSeries = [];
+        let basePortfolioVal = 0;
+        holdings.forEach((h, idx) => {
+          const q = data.stockQuotes[idx];
+          if (q && q.closesSeries && q.closesSeries.length === seriesLen) {
+            basePortfolioVal += h.shares * q.closesSeries[0];
+          }
+        });
+
+        if (basePortfolioVal > 0) {
+          for (let d = 0; d < seriesLen; d++) {
+            let dayVal = 0;
+            holdings.forEach((h, idx) => {
+              const q = data.stockQuotes[idx];
+              if (q && q.closesSeries && q.closesSeries.length === seriesLen) {
+                dayVal += h.shares * q.closesSeries[d];
+              }
+            });
+            portfolioSeries.push(Number((((dayVal - basePortfolioVal) / basePortfolioVal) * 100).toFixed(2)));
+          }
+
+          datasets.push({
+            label: "⭐ 整體投資組合",
+            data: portfolioSeries,
+            borderColor: "#fbbf24",
+            backgroundColor: "rgba(251, 191, 36, 0.12)",
+            borderWidth: 3,
+            tension: 0.3,
+            pointRadius: 2.5
+          });
+        }
+      }
+
+      // 第 2 條：加權指數 (TAIEX)
       if (data.taiexData) {
         datasets.push({
           label: "加權指數 (TAIEX)",
@@ -506,20 +546,21 @@
           borderDash: [5, 5],
           borderWidth: 2,
           tension: 0.3,
-          pointRadius: 1
+          pointRadius: 1.5
         });
       }
 
+      // 第 3~7 條：各檔持股曲線
       holdings.forEach((h, idx) => {
         const q = data.stockQuotes[idx];
         if (q) {
           datasets.push({
-            label: `${h.code}`,
+            label: `${h.code} ${h.name}`,
             data: q.cumReturnSeries,
             borderColor: palette[idx % palette.length],
-            borderWidth: 2,
+            borderWidth: 1.8,
             tension: 0.3,
-            pointRadius: 2
+            pointRadius: 1.5
           });
         }
       });
@@ -531,7 +572,15 @@
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
-          plugins: { legend: { labels: { color: "#cbd5e1", font: { size: 11 } } } },
+          plugins: {
+            legend: { labels: { color: "#cbd5e1", font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                title: items => fullDates[items[0].dataIndex] || items[0].label,
+                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y}%`
+              }
+            }
+          },
           scales: {
             x: { ticks: { color: "#64748b", maxTicksLimit: 8 }, grid: { color: "#1e293b" } },
             y: {
