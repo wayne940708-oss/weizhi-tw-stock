@@ -36,6 +36,21 @@
       outline: none;
       border-color: #3b82f6;
     }
+    /* 手機端橫向表格凍結第一欄（標的名稱） */
+    .sticky-col {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      background-color: #111622;
+      box-shadow: 4px 0 10px -2px rgba(0, 0, 0, 0.65);
+    }
+    thead .sticky-col {
+      background-color: #131823;
+      z-index: 20;
+    }
+    tr:hover .sticky-col {
+      background-color: #192132;
+    }
   </style>
 </head>
 <body class="p-3 sm:p-5 md:p-6 max-w-7xl mx-auto">
@@ -88,7 +103,7 @@
     </div>
   </section>
 
-  <!-- 核心 KPI 指標卡（4 欄：加入現金水位與成交量能） -->
+  <!-- 核心 KPI 指標卡（4 欄） -->
   <section class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 md:gap-4 mb-6">
     <div class="kpi-card p-4">
       <div class="text-xs font-medium text-gray-400">股票總成本 / 預備現金</div>
@@ -134,12 +149,12 @@
     <div class="card p-4 flex flex-col justify-between">
       <div>
         <h2 class="text-sm font-bold text-white mb-3 flex items-center gap-1.5">
-          <span>🌐 國際情勢、籌碼流向與投組總評</span>
+          <span>🌐 國際情勢、外資投信籌碼與投組總評</span>
         </h2>
         <div id="macroSummary" class="text-xs text-gray-300 space-y-2.5 leading-relaxed">
           <div class="p-2.5 rounded-lg bg-[#181f2e] border border-gray-800">
             <div class="font-semibold text-blue-300 mb-1">📡 國際與半導體籌碼焦點</div>
-            <p class="text-gray-400">按下「⚡ 立即更新戰情室」自動同步證交所/櫃買三大法人買賣超與美股連動數據。</p>
+            <p class="text-gray-400">按下「⚡ 立即更新戰情室」自動同步外資與投信獨立連買連賣天數與美股連動數據。</p>
           </div>
         </div>
       </div>
@@ -147,7 +162,7 @@
     </div>
   </section>
 
-  <!-- 模組二新增：大盤回檔壓力測試模擬器（含 00631L 2倍槓桿換算） -->
+  <!-- 大盤回檔壓力測試模擬器 -->
   <section class="card p-4 mb-6">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-3">
       <div>
@@ -168,18 +183,21 @@
     </div>
   </section>
 
-  <!-- 持股深度健檢卡片（整合三大法人連續買賣超與 20MA 乖離率） -->
+  <!-- 持股深度健檢卡片（外資 vs 投信拆解 + 區隔 ETF 申贖） -->
   <section class="card p-4 mb-6">
-    <h2 class="text-sm font-bold text-white mb-3.5">🎯 持股深度健檢、三大法人籌碼與操作策略</h2>
+    <h2 class="text-sm font-bold text-white mb-3.5">🎯 持股深度健檢、外資/投信籌碼與操作策略</h2>
     <div id="strategyCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 text-sm">
-      <div class="text-xs text-gray-500 col-span-full py-4 text-center">執行更新後將在此顯示各檔持股的月線乖離率、法人連買連賣天數與操作建議。</div>
+      <div class="text-xs text-gray-500 col-span-full py-4 text-center">執行更新後將在此顯示各檔持股的月線乖離率、外資與投信動向及操作建議。</div>
     </div>
   </section>
 
-  <!-- 持倉部位與預備現金管理 -->
+  <!-- 持倉部位與預備現金管理（手機端凍結左側標的欄） -->
   <section class="card p-4">
     <div class="flex flex-wrap justify-between items-center mb-3.5 gap-2">
-      <h2 class="text-sm font-bold text-white">💼 持倉部位、現金水位與即時損益明細</h2>
+      <div>
+        <h2 class="text-sm font-bold text-white">💼 持倉部位、現金水位與即時損益明細</h2>
+        <p class="text-[11px] text-gray-400 mt-0.5">📱 手機左右滑動明細時，左側「標的名稱」已自動鎖定凍結</p>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <div class="flex items-center gap-1.5 bg-[#181e2c] border border-gray-700 rounded-lg px-2.5 py-1">
           <span class="text-xs text-amber-300">💵 預備現金 (NTD)：</span>
@@ -201,20 +219,20 @@
       </button>
     </div>
 
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto rounded-lg border border-gray-800/80">
       <table class="w-full text-left text-sm whitespace-nowrap">
-        <thead class="text-xs text-gray-400 border-b border-gray-800">
+        <thead class="text-xs text-gray-400 border-b border-gray-800 bg-[#131823]">
           <tr>
-            <th class="py-2.5 pr-3">標的</th>
-            <th class="py-2.5 px-2 text-right">股數</th>
-            <th class="py-2.5 px-2 text-right">平均成本</th>
-            <th class="py-2.5 px-2 text-right">總投入成本</th>
-            <th class="py-2.5 px-2 text-right">最新現價</th>
-            <th class="py-2.5 px-2 text-right">20日均價 / 乖離</th>
-            <th class="py-2.5 px-2 text-right">三大法人 (今日/5日)</th>
-            <th class="py-2.5 px-2 text-right">目前現值</th>
-            <th class="py-2.5 px-2 text-right">未實現損益</th>
-            <th class="py-2.5 pl-2 text-center">加減碼</th>
+            <th class="py-2.5 pl-3 pr-3 sticky-col">標的</th>
+            <th class="py-2.5 px-2.5 text-right">股數</th>
+            <th class="py-2.5 px-2.5 text-right">平均成本</th>
+            <th class="py-2.5 px-2.5 text-right">總投入成本</th>
+            <th class="py-2.5 px-2.5 text-right">最新現價</th>
+            <th class="py-2.5 px-2.5 text-right">20日均價 / 乖離</th>
+            <th class="py-2.5 px-2.5 text-right">外資 / 投信籌碼</th>
+            <th class="py-2.5 px-2.5 text-right">目前現值</th>
+            <th class="py-2.5 px-2.5 text-right">未實現損益</th>
+            <th class="py-2.5 pl-2 pr-3 text-center">加減碼</th>
           </tr>
         </thead>
         <tbody id="holdingsTableBody" class="divide-y divide-gray-800/60"></tbody>
@@ -357,18 +375,40 @@
       return `<span class="px-1.5 py-0.5 rounded text-[11px] bg-teal-950/70 text-teal-300">${val}% 偏空</span>`;
     }
 
+    // 外資 vs 投信拆解＋ETF 申贖雜訊區隔
     function getInstBadge(code) {
+      const isEtf = code.startsWith("00");
       const inst = institutionalData[code];
+
+      if (isEtf) {
+        return `
+          <div><span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950/90 text-indigo-300 border border-indigo-800/80">ETF 追蹤/折溢價主導</span></div>
+          <div class="text-[11px] text-gray-400 mt-0.5">過濾自營商申贖避險雜訊</div>
+        `;
+      }
+
       if (!inst) return `<span class="text-xs text-gray-500">--</span>`;
-      const s = inst.streak;
-      const streakTag = s > 0
-        ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-red-950/90 text-red-300 border border-red-800/80">法人連${s}買</span>`
-        : (s < 0 ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/90 text-emerald-300 border border-emerald-800/80">法人連${Math.abs(s)}賣</span>` : `<span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-800 text-gray-300">法人持平</span>`);
-      const tCls = inst.todayTotal >= 0 ? "up" : "down";
-      const s5Cls = inst.sum5Total >= 0 ? "up" : "down";
+
+      const fS = inst.foreignStreak ?? 0;
+      const tS = inst.trustStreak ?? 0;
+
+      const fTag = fS > 0
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-red-950/90 text-red-300 border border-red-800/80">外資連${fS}買</span>`
+        : (fS < 0 ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/90 text-emerald-300 border border-emerald-800/80">外資連${Math.abs(fS)}賣</span>` : `<span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-800 text-gray-400">外資持平</span>`);
+
+      const tTag = tS > 0
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-950/90 text-amber-300 border border-amber-700/80">投信連${tS}買</span>`
+        : (tS < 0 ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-teal-950/90 text-teal-300 border border-teal-800/80">投信連${Math.abs(tS)}賣</span>` : `<span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-800 text-gray-400">投信持平</span>`);
+
+      const fCls = inst.todayForeign >= 0 ? "up" : "down";
+      const tCls = inst.todayTrust >= 0 ? "up" : "down";
+
       return `
-        <div>${streakTag}</div>
-        <div class="text-[11px] text-gray-400 mt-0.5">今 <span class="${tCls}">${inst.todayTotal >= 0 ? '+' : ''}${inst.todayTotal}</span>張 / 5日 <span class="${s5Cls}">${inst.sum5Total >= 0 ? '+' : ''}${inst.sum5Total}</span>張</div>
+        <div class="flex flex-wrap gap-1 justify-end md:justify-start">${fTag}${tTag}</div>
+        <div class="text-[11px] text-gray-400 mt-0.5">
+          外 <span class="${fCls}">${inst.todayForeign >= 0 ? '+' : ''}${inst.todayForeign}</span>張 ｜ 
+          投 <span class="${tCls}">${inst.todayTrust >= 0 ? '+' : ''}${inst.todayTrust}</span>張 (5日 ${inst.sum5Trust >= 0 ? '+' : ''}${inst.sum5Trust})
+        </div>
       `;
     }
 
@@ -395,18 +435,21 @@
 
         tbody.innerHTML += `
           <tr class="hover:bg-gray-800/40 transition">
-            <td class="py-2.5 pr-3 font-semibold text-white">${h.code} <span class="text-xs font-normal text-gray-400">${h.name}</span></td>
-            <td class="py-2.5 px-2 text-right">${h.shares.toLocaleString()}</td>
-            <td class="py-2.5 px-2 text-right">${h.cost.toFixed(2)}</td>
-            <td class="py-2.5 px-2 text-right font-medium text-gray-200">${totalCost.toLocaleString()}</td>
-            <td class="py-2.5 px-2 text-right font-semibold text-white">${hasPrice ? h.currentPrice.toFixed(2) + dayPctText : "--"}</td>
-            <td class="py-2.5 px-2 text-right">${biasDisplay}</td>
-            <td class="py-2.5 px-2 text-right">${getInstBadge(h.code)}</td>
-            <td class="py-2.5 px-2 text-right font-semibold text-white">${hasPrice ? marketVal.toLocaleString() : "--"}</td>
-            <td class="py-2.5 px-2 text-right font-bold ${pnlClass}">
+            <td class="py-2.5 pl-3 pr-3 font-semibold text-white sticky-col">
+              <div>${h.code}</div>
+              <div class="text-[11px] font-normal text-gray-400">${h.name}</div>
+            </td>
+            <td class="py-2.5 px-2.5 text-right">${h.shares.toLocaleString()}</td>
+            <td class="py-2.5 px-2.5 text-right">${h.cost.toFixed(2)}</td>
+            <td class="py-2.5 px-2.5 text-right font-medium text-gray-200">${totalCost.toLocaleString()}</td>
+            <td class="py-2.5 px-2.5 text-right font-semibold text-white">${hasPrice ? h.currentPrice.toFixed(2) + dayPctText : "--"}</td>
+            <td class="py-2.5 px-2.5 text-right">${biasDisplay}</td>
+            <td class="py-2.5 px-2.5 text-right">${getInstBadge(h.code)}</td>
+            <td class="py-2.5 px-2.5 text-right font-semibold text-white">${hasPrice ? marketVal.toLocaleString() : "--"}</td>
+            <td class="py-2.5 px-2.5 text-right font-bold ${pnlClass}">
               ${hasPrice ? `${pnl >= 0 ? '+' : ''}${pnl.toLocaleString()} (${fmtSigned(pnlPct, 2)}%)` : "--"}
             </td>
-            <td class="py-2.5 pl-2 text-center space-x-1">
+            <td class="py-2.5 pl-2 pr-3 text-center space-x-1">
               <button type="button" onclick="adjustShares('${h.code}', 100)" class="px-1.5 py-0.5 text-xs bg-gray-800 hover:bg-gray-700 rounded">+100</button>
               <button type="button" onclick="adjustShares('${h.code}', -100)" class="px-1.5 py-0.5 text-xs bg-gray-800 hover:bg-gray-700 rounded">-100</button>
             </td>
@@ -476,7 +519,6 @@
         totalCost += h.shares * h.cost;
         currentStockVal += val;
 
-        // 00631L 套用 2.0 倍槓桿係數，半導體個股套用 1.25 Beta，市值型 ETF 套用 1.0
         let beta = 1.0;
         if (h.code === "00631L") beta = 2.0;
         else if (["3035", "6488", "5425"].includes(h.code)) beta = 1.25;
@@ -534,8 +576,8 @@
       let etfPremiumAlert = "";
 
       const advices = holdings.map(h => {
+        const isEtf = h.code.startsWith("00");
         const bias = calcBias20(h.currentPrice, h.ma20);
-        const pnlPct = h.currentPrice ? ((h.currentPrice - h.cost) / h.cost) * 100 : 0;
         const val = (h.currentPrice || h.cost) * h.shares;
         totalVal += val;
         if (bias !== null) {
@@ -545,35 +587,43 @@
           }
         }
 
-        // 00631L 折溢價估算檢核（對比大盤單日漲幅 × 2）
         const taiex = dataMap["^TWII"];
         if (h.code === "00631L" && taiex && typeof h.dayChangePct === "number") {
           const expectedPct = taiex.dayChangePct * 2;
           const estSpread = h.dayChangePct - expectedPct;
           if (estSpread >= 0.6) {
-            etfPremiumAlert = `00631L 盤中漲幅領先大盤兩倍約 +${estSpread.toFixed(2)}%，出現明顯溢價，切勿市價追高；`;
+            etfPremiumAlert = `00631L 漲幅領先大盤兩倍約 +${estSpread.toFixed(2)}%，出現明顯溢價，切勿市價追高；`;
           }
         }
 
-        const inst = institutionalData[h.code];
-        let instNote = "";
-        if (inst) {
-          if (inst.streak >= 2) instNote = `法人連 ${inst.streak} 日買超（近5日 ${inst.sum5Total >= 0 ? '+' : ''}${inst.sum5Total} 張），籌碼面偏多護航。`;
-          else if (inst.streak <= -2) instNote = `法人連 ${Math.abs(inst.streak)} 日賣超（近5日 ${inst.sum5Total} 張），籌碼尚待沉澱。`;
-          else instNote = `近 5 日三大法人累積 ${inst.sum5Total >= 0 ? '+' : ''}${inst.sum5Total} 張。`;
+        let chipNote = "";
+        if (isEtf) {
+          chipNote = "ETF 淨值緊貼權值股表現，已自動過濾自營商申贖避險雜訊，操作以追蹤指數月線乖離與折溢價為準。";
+        } else {
+          const inst = institutionalData[h.code];
+          if (inst) {
+            const parts = [];
+            if (inst.trustStreak >= 2) parts.push(`投信連 ${inst.trustStreak} 買（5日 ${inst.sum5Trust >= 0 ? '+' : ''}${inst.sum5Trust} 張）具作帳認養支撐`);
+            else if (inst.trustStreak <= -2) parts.push(`投信連 ${Math.abs(inst.trustStreak)} 賣`);
+            if (inst.foreignStreak >= 2) parts.push(`外資連 ${inst.foreignStreak} 買（5日 ${inst.sum5Foreign >= 0 ? '+' : ''}${inst.sum5Foreign} 張）`);
+            else if (inst.foreignStreak <= -2) parts.push(`外資連 ${Math.abs(inst.foreignStreak)} 賣`);
+            chipNote = parts.length > 0
+              ? `籌碼面：${parts.join("，")}。`
+              : `近 5 日外資 ${inst.sum5Foreign >= 0 ? '+' : ''}${inst.sum5Foreign} 張、投信 ${inst.sum5Trust >= 0 ? '+' : ''}${inst.sum5Trust} 張。`;
+          }
         }
 
         let adviceText = "";
         if (bias === null) {
-          adviceText = "已同步最新報價，建議搭配均價成本設定移動停利點。";
+          adviceText = `已同步最新報價，建議搭配均價成本設定移動停利點。${chipNote}`;
         } else if (bias >= 8) {
-          adviceText = `20日正乖離達 ${fmtSigned(bias, 1)}%，短線明顯過熱，可考慮分批獲利了結鎖定波段利潤。${instNote}`;
+          adviceText = `20日正乖離達 ${fmtSigned(bias, 1)}%，短線明顯過熱，可考慮分批獲利了結鎖定波段利潤。${chipNote}`;
         } else if (bias > 0) {
-          adviceText = `股價站穩月線（20MA ${h.ma20.toFixed(1)}）之上，乖離 ${fmtSigned(bias, 1)}% 屬多頭格局，以月線為防守點。${instNote}`;
+          adviceText = `股價站穩月線（20MA ${h.ma20.toFixed(1)}）之上，乖離 ${fmtSigned(bias, 1)}% 屬多頭格局，以月線為防守點。${chipNote}`;
         } else if (bias <= -8) {
-          adviceText = `20日負乖離擴大至 ${fmtSigned(bias, 1)}%，短線超跌，靜待止跌紅K站回五日線再分批承接。${instNote}`;
+          adviceText = `20日負乖離擴大至 ${fmtSigned(bias, 1)}%，短線超跌，靜待止跌紅K站回五日線再分批承接。${chipNote}`;
         } else {
-          adviceText = `目前位於月線（${h.ma20.toFixed(1)}）下方整理，乖離 ${fmtSigned(bias, 1)}%，未站回月線前宜保守觀望。${instNote}`;
+          adviceText = `目前位於月線（${h.ma20.toFixed(1)}）下方整理，乖離 ${fmtSigned(bias, 1)}%，未站回月線前宜保守觀望。${chipNote}`;
         }
 
         return { code: h.code, actionAdvice: adviceText };
@@ -599,7 +649,7 @@
           <p class="text-gray-300">${usTone}</p>
         </div>
         <div class="p-2.5 rounded-lg bg-[#181f2e] border border-gray-800">
-          <div class="font-semibold text-emerald-300 mb-1">🏦 三大法人籌碼與資金水位總評</div>
+          <div class="font-semibold text-emerald-300 mb-1">🏦 外資/投信籌碼與資金水位總評</div>
           <p class="text-gray-300">${twTone}投組加權 20日乖離率為 <b>${fmtSigned(avgBias, 2)}%</b>。建議保留至少 20%~30% 預備現金應對槓桿 ETF（00631L）與半導體個股的高波動洗盤。</p>
         </div>
       `;
@@ -624,7 +674,7 @@
 
       const btn = document.getElementById("analyzeBtn");
       btn.disabled = true;
-      btn.innerHTML = `<span>⏳ 同步報價與法人籌碼中...</span>`;
+      btn.innerHTML = `<span>⏳ 同步報價與外資投信籌碼...</span>`;
 
       const session = getTaiwanMarketSession();
       document.getElementById("marketStatusBadge").innerText = session.label;
@@ -667,7 +717,7 @@
         renderChart(lastChartData, currentChartMode);
 
         const summaryObj = buildMarketAndPortfolioSummary(dataMap);
-        document.getElementById("lastUpdated").innerText = `資料時間：${session.timeStr}（證交所/櫃買即時盤＋三大法人籌碼）`;
+        document.getElementById("lastUpdated").innerText = `資料時間：${session.timeStr}（外資/投信籌碼＋即時盤校準）`;
         document.getElementById("macroSummary").innerHTML = summaryObj.htmlSummary;
 
         if (summaryObj.riskWarning) {
@@ -697,7 +747,7 @@
           `;
         }).join("");
 
-        showToast("✅ 報價、三大法人買賣超、資金水位與風險試算已全面更新！");
+        showToast("✅ 外資/投信拆解籌碼與凍結表格已同步完成！");
       } catch (err) {
         showToast("❌ 執行異常：" + err.message, "error");
       } finally {
