@@ -31,7 +31,6 @@
       color: #f8fafc;
       border-radius: 8px;
       padding: 7px 12px;
-      transition: border-color 0.2s;
     }
     .input-dark:focus {
       outline: none;
@@ -41,30 +40,53 @@
 </head>
 <body class="p-3 sm:p-5 md:p-6 max-w-7xl mx-auto">
 
-  <!-- 頂部非阻斷式通知列（取代會被手機封鎖的 alert） -->
   <div id="toastBanner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-2xl border transition-all duration-300"></div>
 
   <!-- 頂部標題與控制列 -->
-  <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 pb-4 border-b border-gray-800/80">
+  <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5 pb-4 border-b border-gray-800/80">
     <div>
       <div class="flex flex-wrap items-center gap-2.5">
         <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/40 text-blue-400 font-bold">📊</span>
         <h1 class="text-xl md:text-2xl font-bold text-white tracking-tight">台股投資組合戰情室</h1>
         <span id="marketStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-blue-950 text-blue-300 border border-blue-800">待命就緒</span>
       </div>
-      <p id="lastUpdated" class="text-xs text-gray-400 mt-1.5">資料時間：尚未執行查詢（貼上 Google Script 網址即可連線）</p>
+      <p id="lastUpdated" class="text-xs text-gray-400 mt-1.5">資料時間：尚未執行查詢</p>
     </div>
 
     <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
       <input type="text" id="gasUrlInput" placeholder="貼上 https://script.google.com/.../exec" class="input-dark text-sm flex-1 lg:w-64" />
-      <button type="button" onclick="saveGasUrl()" class="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition">
+      <button type="button" onclick="saveGasUrl()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium px-3.5 py-2 rounded-lg transition">
         儲存網址
       </button>
-      <button type="button" id="analyzeBtn" onclick="runAnalysis()" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-lg shadow-blue-900/40 transition">
+      <button type="button" id="analyzeBtn" onclick="runAnalysis()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-lg shadow-blue-900/40 transition">
         <span>⚡ 立即更新戰情室</span>
       </button>
     </div>
   </header>
+
+  <!-- 國際情勢即時看板（美股四大指數 + 台積電 ADR） -->
+  <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-5" id="globalMarketBar">
+    <div class="kpi-card px-3 py-2.5">
+      <div class="text-[11px] text-gray-400">🇺🇸 道瓊工業 (DJI)</div>
+      <div id="glb_DJI" class="text-sm font-bold text-white mt-0.5">等待更新...</div>
+    </div>
+    <div class="kpi-card px-3 py-2.5">
+      <div class="text-[11px] text-gray-400">🇺🇸 那斯達克 (IXIC)</div>
+      <div id="glb_IXIC" class="text-sm font-bold text-white mt-0.5">等待更新...</div>
+    </div>
+    <div class="kpi-card px-3 py-2.5">
+      <div class="text-[11px] text-gray-400">🇺🇸 標普 500 (GSPC)</div>
+      <div id="glb_GSPC" class="text-sm font-bold text-white mt-0.5">等待更新...</div>
+    </div>
+    <div class="kpi-card px-3 py-2.5">
+      <div class="text-[11px] text-gray-400">🔌 費城半導體 (SOX)</div>
+      <div id="glb_SOX" class="text-sm font-bold text-white mt-0.5">等待更新...</div>
+    </div>
+    <div class="kpi-card px-3 py-2.5 col-span-2 sm:col-span-1">
+      <div class="text-[11px] text-gray-400">🇹🇼 台積電 ADR (TSM)</div>
+      <div id="glb_TSM" class="text-sm font-bold text-white mt-0.5">等待更新...</div>
+    </div>
+  </section>
 
   <!-- 核心 KPI 指標卡（4 欄） -->
   <section class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 md:gap-4 mb-6">
@@ -90,13 +112,13 @@
     </div>
   </section>
 
-  <!-- 近一個月多維度走勢圖 + 總體盤勢與籌碼風控總評 -->
+  <!-- 近一個月多維度走勢圖 + 國際情勢與市場焦點電報 -->
   <section class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
     <div class="card p-4 lg:col-span-2 flex flex-col justify-between">
       <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
         <div>
           <h2 id="chartTitle" class="text-sm font-bold text-white">📈 近一個月（22交易日）多維度累計報酬率對比 (%)</h2>
-          <p class="text-[11px] text-gray-400 mt-0.5">點擊或滑動節點可檢視完整交易日期、當日收盤價與累計報酬率</p>
+          <p class="text-[11px] text-gray-400 mt-0.5">點擊或滑動節點可檢視「完整日期、當日收盤價、當日漲跌幅% 與 累計報酬%」</p>
         </div>
         <div class="flex gap-1.5 bg-[#0b0e14] p-1 rounded-lg border border-gray-800">
           <button type="button" id="btnModeReturn" onclick="switchChartMode('return')" class="text-xs px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium">7線累計報酬</button>
@@ -111,17 +133,20 @@
     <div class="card p-4 flex flex-col justify-between">
       <div>
         <h2 class="text-sm font-bold text-white mb-3 flex items-center gap-1.5">
-          <span>🌐 投組結構與乖離位階總評</span>
+          <span>🌐 國際情勢、市場焦點與投組總評</span>
         </h2>
-        <div id="macroSummary" class="text-xs md:text-sm text-gray-300 space-y-3 leading-relaxed">
-          <p class="text-gray-400">按下上方「⚡ 立即更新戰情室」，系統將同步抓取加權指數與 5 檔持股最新收盤價，自動繪製 7 線走勢對比與 20MA 乖離診斷。</p>
+        <div id="macroSummary" class="text-xs text-gray-300 space-y-2.5 leading-relaxed">
+          <div class="p-2.5 rounded-lg bg-[#181f2e] border border-gray-800">
+            <div class="font-semibold text-blue-300 mb-1">📡 國際與半導體焦點</div>
+            <p class="text-gray-400">按下「⚡ 立即更新戰情室」自動同步證交所/櫃買中心即時報價與美股四大指數。</p>
+          </div>
         </div>
       </div>
-      <div id="riskAlertBox" class="mt-4 p-3 rounded-lg bg-amber-950/50 border border-amber-700/60 text-xs text-amber-200 leading-relaxed hidden"></div>
+      <div id="riskAlertBox" class="mt-3 p-3 rounded-lg bg-amber-950/50 border border-amber-700/60 text-xs text-amber-200 leading-relaxed hidden"></div>
     </div>
   </section>
 
-  <!-- 持股深度健檢卡片（Gemini 旗艦戰情室卡片風格） -->
+  <!-- 持股深度健檢卡片 -->
   <section class="card p-4 mb-6">
     <h2 class="text-sm font-bold text-white mb-3.5">🎯 持股深度健檢、20日乖離率位階與操作策略</h2>
     <div id="strategyCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 text-sm">
@@ -172,7 +197,6 @@
 
   <script>
     const OTC_STOCKS = new Set(["6488", "5425", "8069", "3293", "5347", "3105"]);
-    // 預設持倉（總成本精準為 $115,615）
     const DEFAULT_HOLDINGS = [
       { code: "00631L", name: "元大台灣50正2", shares: 100, cost: 229.00, currentPrice: null, dayChangePct: null, ma20: null },
       { code: "009816", name: "凱基台灣TOP50", shares: 3500, cost: 10.50, currentPrice: null, dayChangePct: null, ma20: null },
@@ -187,15 +211,19 @@
     let currentChartMode = "return";
     let toastTimer = null;
 
+    function fmtSigned(num, decimals = 2) {
+      if (typeof num !== "number" || isNaN(num)) return "--";
+      const sign = num > 0 ? "+" : "";
+      return `${sign}${num.toFixed(decimals)}`;
+    }
+
     function showToast(msg, type = "success") {
       const banner = document.getElementById("toastBanner");
       banner.innerText = msg;
       banner.className = "fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-2xl border transition-all duration-300 ";
-      if (type === "error") {
-        banner.className += "bg-red-950/95 text-red-200 border-red-700";
-      } else {
-        banner.className += "bg-emerald-950/95 text-emerald-200 border-emerald-700";
-      }
+      banner.className += type === "error"
+        ? "bg-red-950/95 text-red-200 border-red-700"
+        : "bg-emerald-950/95 text-emerald-200 border-emerald-700";
       banner.classList.remove("hidden");
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => banner.classList.add("hidden"), 3500);
@@ -231,7 +259,7 @@
     function resetDefaultHoldings() {
       holdings = JSON.parse(JSON.stringify(DEFAULT_HOLDINGS));
       saveHoldings();
-      showToast("已還原為預設 5 檔持倉（總成本 $115,615）");
+      showToast("已還原為預設 5 檔持倉");
     }
 
     function upsertHolding() {
@@ -281,9 +309,9 @@
 
     function getBiasBadge(bias) {
       if (bias === null) return "";
-      const val = bias.toFixed(2);
-      if (bias >= 8) return `<span class="px-1.5 py-0.5 rounded text-[11px] bg-red-950 text-red-300 border border-red-800">+${val}% 過熱</span>`;
-      if (bias > 0) return `<span class="px-1.5 py-0.5 rounded text-[11px] bg-rose-950/70 text-rose-300">+${val}% 偏多</span>`;
+      const val = fmtSigned(bias, 2);
+      if (bias >= 8) return `<span class="px-1.5 py-0.5 rounded text-[11px] bg-red-950 text-red-300 border border-red-800">${val}% 過熱</span>`;
+      if (bias > 0) return `<span class="px-1.5 py-0.5 rounded text-[11px] bg-rose-950/70 text-rose-300">${val}% 偏多</span>`;
       if (bias <= -8) return `<span class="px-1.5 py-0.5 rounded text-[11px] bg-emerald-950 text-emerald-300 border border-emerald-800">${val}% 超跌</span>`;
       return `<span class="px-1.5 py-0.5 rounded text-[11px] bg-teal-950/70 text-teal-300">${val}% 偏空</span>`;
     }
@@ -297,7 +325,7 @@
         const hasPrice = typeof h.currentPrice === "number" && h.currentPrice > 0;
         const marketVal = hasPrice ? Math.round(h.shares * h.currentPrice) : null;
         const pnl = hasPrice ? marketVal - totalCost : null;
-        const pnlPct = hasPrice ? ((pnl / totalCost) * 100).toFixed(2) : null;
+        const pnlPct = hasPrice ? (pnl / totalCost) * 100 : null;
         const pnlClass = pnl > 0 ? "up" : (pnl < 0 ? "down" : "text-gray-300");
 
         const bias20 = calcBias20(h.currentPrice, h.ma20);
@@ -306,7 +334,7 @@
           : "--";
 
         const dayPctText = typeof h.dayChangePct === "number"
-          ? `<span class="text-xs ml-1 ${h.dayChangePct >= 0 ? 'up' : 'down'}">(${h.dayChangePct >= 0 ? '+' : ''}${h.dayChangePct.toFixed(2)}%)</span>`
+          ? `<span class="text-xs ml-1 ${h.dayChangePct >= 0 ? 'up' : 'down'}">(${fmtSigned(h.dayChangePct, 2)}%)</span>`
           : "";
 
         tbody.innerHTML += `
@@ -319,7 +347,7 @@
             <td class="py-2.5 px-2 text-right">${biasDisplay}</td>
             <td class="py-2.5 px-2 text-right font-semibold text-white">${hasPrice ? marketVal.toLocaleString() : "--"}</td>
             <td class="py-2.5 px-2 text-right font-bold ${pnlClass}">
-              ${hasPrice ? `${pnl >= 0 ? '+' : ''}${pnl.toLocaleString()} (${pnl >= 0 ? '+' : ''}${pnlPct}%)` : "--"}
+              ${hasPrice ? `${pnl >= 0 ? '+' : ''}${pnl.toLocaleString()} (${fmtSigned(pnlPct, 2)}%)` : "--"}
             </td>
             <td class="py-2.5 pl-2 text-center space-x-1">
               <button type="button" onclick="adjustShares('${h.code}', 100)" class="px-1.5 py-0.5 text-xs bg-gray-800 hover:bg-gray-700 rounded">+100</button>
@@ -356,15 +384,15 @@
       document.getElementById("kpiTotalCost").innerText = `$${Math.round(totalCost).toLocaleString()}`;
       if (anyPrice && totalCost > 0) {
         const pnl = Math.round(totalVal - totalCost);
-        const pnlPct = ((pnl / totalCost) * 100).toFixed(2);
+        const pnlPct = (pnl / totalCost) * 100;
         const cls = pnl >= 0 ? "up" : "down";
         document.getElementById("kpiTotalValue").innerText = `$${Math.round(totalVal).toLocaleString()}`;
         document.getElementById("kpiTotalPnL").innerHTML = `<span class="${cls}">${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}</span>`;
-        document.getElementById("kpiTotalPnLPct").innerHTML = `<span class="${cls}">報酬率：${pnl >= 0 ? '+' : ''}${pnlPct}%</span>`;
+        document.getElementById("kpiTotalPnLPct").innerHTML = `<span class="${cls}">報酬率：${fmtSigned(pnlPct, 2)}%</span>`;
 
         if (biasWeightVal > 0) {
-          const avgBias = (weightedBiasSum / biasWeightVal).toFixed(2);
-          document.getElementById("kpiWeightedBias").innerText = `投組加權 20MA 乖離：${avgBias >= 0 ? '+' : ''}${avgBias}%`;
+          const avgBias = weightedBiasSum / biasWeightVal;
+          document.getElementById("kpiWeightedBias").innerText = `投組加權 20MA 乖離：${fmtSigned(avgBias, 2)}%`;
         }
       }
     }
@@ -382,7 +410,26 @@
       };
     }
 
-    function buildRuleBasedAnalysis() {
+    function updateGlobalBar(dataMap) {
+      const mapping = [
+        { id: "glb_DJI", sym: "^DJI", dec: 0 },
+        { id: "glb_IXIC", sym: "^IXIC", dec: 0 },
+        { id: "glb_GSPC", sym: "^GSPC", dec: 1 },
+        { id: "glb_SOX", sym: "^SOX", dec: 1 },
+        { id: "glb_TSM", sym: "TSM", dec: 2 }
+      ];
+
+      mapping.forEach(item => {
+        const d = dataMap[item.sym];
+        const el = document.getElementById(item.id);
+        if (d && d.latestPrice) {
+          const cls = d.dayChangePct >= 0 ? "up" : "down";
+          el.innerHTML = `${d.latestPrice.toLocaleString(undefined, { maximumFractionDigits: item.dec })} <span class="text-xs ${cls}">(${fmtSigned(d.dayChangePct, 2)}%)</span>`;
+        }
+      });
+    }
+
+    function buildMarketAndPortfolioSummary(dataMap) {
       let totalVal = 0;
       let weightedBias = 0;
       let maxBiasStock = null;
@@ -403,28 +450,51 @@
         if (bias === null) {
           adviceText = "已同步最新報價，建議搭配均價成本設定移動停利點。";
         } else if (bias >= 8) {
-          adviceText = `20日正乖離達 +${bias.toFixed(1)}%，短線明顯過熱，切忌追高，可考慮分批獲利了結鎖定波段利潤。`;
+          adviceText = `20日正乖離達 ${fmtSigned(bias, 1)}%，短線明顯過熱，切忌追高，可考慮分批獲利了結鎖定波段利潤。`;
         } else if (bias > 0) {
-          adviceText = `股價站穩月線（20MA ${h.ma20.toFixed(1)}）之上，乖離 +${bias.toFixed(1)}% 屬健康多頭格局，續抱並以月線為防守點。`;
+          adviceText = `股價站穩月線（20MA ${h.ma20.toFixed(1)}）之上，乖離 ${fmtSigned(bias, 1)}% 屬健康多頭格局，續抱並以月線為防守點。`;
         } else if (bias <= -8) {
-          adviceText = `20日負乖離擴大至 ${bias.toFixed(1)}%，短線超跌且技術面偏弱，靜待止跌紅K站回五日線再考慮攤平。`;
+          adviceText = `20日負乖離擴大至 ${fmtSigned(bias, 1)}%，短線超跌且技術面偏弱，靜待止跌紅K站回五日線再考慮攤平。`;
         } else {
-          adviceText = `目前位於月線（${h.ma20.toFixed(1)}）下方整理，乖離 ${bias.toFixed(1)}%，未帶量突破月線前宜保守觀望。`;
+          adviceText = `目前位於月線（${h.ma20.toFixed(1)}）下方整理，乖離 ${fmtSigned(bias, 1)}%，未帶量突破月線前宜保守觀望。`;
         }
 
-        if (pnlPct >= 15) adviceText += `（帳面獲利 +${pnlPct.toFixed(1)}%，具備充足安全邊際）`;
-        if (pnlPct <= -10) adviceText += `（帳面虧損 ${pnlPct.toFixed(1)}%，留意資金控管）`;
+        if (pnlPct >= 15) adviceText += `（帳面獲利 ${fmtSigned(pnlPct, 1)}%，具備充足安全邊際）`;
+        if (pnlPct <= -10) adviceText += `（帳面虧損 ${fmtSigned(pnlPct, 1)}%，留意資金控管）`;
 
         return { code: h.code, actionAdvice: adviceText };
       });
 
-      const avgBias = totalVal > 0 ? (weightedBias / totalVal).toFixed(2) : "0.00";
-      const macroCommentary = `目前投資組合加權 20日乖離率為 ${avgBias >= 0 ? '+' : ''}${avgBias}%。槓桿 ETF（00631L）與半導體供應鏈個股（3035、6488、5425）波動較大，建議嚴守月線位階與均價紀律進行動態加減碼。`;
-      const riskWarning = maxBiasStock
-        ? `${maxBiasStock.code} (${maxBiasStock.name}) 目前 20日乖離率達 ${maxBiasStock.bias >= 0 ? '+' : ''}${maxBiasStock.bias.toFixed(2)}%，為投組中偏離月線幅度最大的標的，請優先留意均值回歸風險。`
-        : "請持續追蹤美股費半指數與台積電 ADR 連動表現。";
+      const avgBias = totalVal > 0 ? weightedBias / totalVal : 0;
+      const dji = dataMap["^DJI"];
+      const sox = dataMap["^SOX"];
+      const tsm = dataMap["TSM"];
+      const taiex = dataMap["^TWII"];
 
-      return { macroCommentary, riskWarning, advices };
+      const usTone = (dji && sox)
+        ? `美股道瓊 ${fmtSigned(dji.dayChangePct, 2)}%、費半 ${fmtSigned(sox.dayChangePct, 2)}%，台積電 ADR ${tsm ? fmtSigned(tsm.dayChangePct, 2) + "%" : "--"}。受通膨與關稅變數影響，半導體族群呈現高波動震盪格局。`
+        : "持續關注美股費半指數與台積電 ADR 隔夜收盤動向。";
+
+      const twTone = taiex
+        ? `台股加權指數目前 ${taiex.latestPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} 點（${fmtSigned(taiex.dayChangePct, 2)}%），大盤經歷急跌洗盤後進入均線修復期。`
+        : "";
+
+      const htmlSummary = `
+        <div class="p-2.5 rounded-lg bg-[#181f2e] border border-gray-800">
+          <div class="font-semibold text-blue-300 mb-1">🌍 國際情勢與美股半導體焦點</div>
+          <p class="text-gray-300">${usTone}</p>
+        </div>
+        <div class="p-2.5 rounded-lg bg-[#181f2e] border border-gray-800">
+          <div class="font-semibold text-emerald-300 mb-1">🇹🇼 台股盤勢與籌碼結構焦點</div>
+          <p class="text-gray-300">${twTone}目前投組加權 20日乖離率為 <b>${fmtSigned(avgBias, 2)}%</b>，槓桿 ETF（00631L）與矽晶圓/IC設計（6488、3035）對外資籌碼高度敏感，建議分批逢低承接、嚴控融資與槓桿比重。</p>
+        </div>
+      `;
+
+      const riskWarning = maxBiasStock
+        ? `${maxBiasStock.code} (${maxBiasStock.name}) 目前 20日乖離率達 ${fmtSigned(maxBiasStock.bias, 2)}%，為投組中偏離月線幅度最大的標的，請優先留意波動與均值回歸風險。`
+        : "";
+
+      return { htmlSummary, riskWarning, advices };
     }
 
     async function runAnalysis() {
@@ -440,7 +510,7 @@
 
       const btn = document.getElementById("analyzeBtn");
       btn.disabled = true;
-      btn.innerHTML = `<span>⏳ 連線抓價與校準中...</span>`;
+      btn.innerHTML = `<span>⏳ 證交所/櫃買即時校準中...</span>`;
 
       const session = getTaiwanMarketSession();
       document.getElementById("marketStatusBadge").innerText = session.label;
@@ -449,6 +519,8 @@
         const tickerList = ["^TWII", ...holdings.map(h => `${h.code}${OTC_STOCKS.has(h.code) ? ".TWO" : ".TW"}`)];
         const res = await fetch(`${gasUrl}?symbols=${encodeURIComponent(tickerList.join(","))}`);
         const dataMap = await res.json();
+
+        updateGlobalBar(dataMap);
 
         const taiexData = dataMap["^TWII"];
         const stockQuotes = holdings.map(h => dataMap[`${h.code}${OTC_STOCKS.has(h.code) ? ".TWO" : ".TW"}`] || dataMap[`${h.code}.TW`] || dataMap[`${h.code}.TWO`]);
@@ -469,36 +541,36 @@
 
         if (taiexData) {
           const tCls = taiexData.dayChangePct >= 0 ? "up" : "down";
-          const tSign = taiexData.dayChangePct >= 0 ? "+" : "";
-          const pts = typeof taiexData.dayChangePts === "number" ? taiexData.dayChangePts.toFixed(2) : "--";
-          document.getElementById("kpiIndexInfo").innerHTML = `${taiexData.latestPrice.toLocaleString(undefined, {maximumFractionDigits: 2})} <span class="text-sm ${tCls}">(${tSign}${taiexData.dayChangePct.toFixed(2)}%)</span>`;
+          const ptsStr = fmtSigned(taiexData.dayChangePts, 2);
+          const pctStr = fmtSigned(taiexData.dayChangePct, 2);
+          document.getElementById("kpiIndexInfo").innerHTML = `${taiexData.latestPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span class="text-sm ${tCls}">(${pctStr}%)</span>`;
           const mRet = taiexData.cumReturnSeries[taiexData.cumReturnSeries.length - 1];
-          document.getElementById("kpiIndexPts").innerHTML = `單日：<span class="${tCls}">${tSign}${pts} 點</span> ｜ 22日：${mRet >= 0 ? '+' : ''}${mRet}%`;
+          document.getElementById("kpiIndexPts").innerHTML = `單日：<span class="${tCls}">${ptsStr} 點</span> ｜ 22日：${fmtSigned(mRet, 2)}%`;
         }
 
         lastChartData = { taiexData, stockQuotes };
         renderChart(lastChartData, currentChartMode);
 
-        const adviceObj = buildRuleBasedAnalysis();
-        document.getElementById("lastUpdated").innerText = `資料時間：${session.timeStr}（證交所與 Yahoo 官方數據校準）`;
-        document.getElementById("macroSummary").innerHTML = `<p>${adviceObj.macroCommentary}</p>`;
+        const summaryObj = buildMarketAndPortfolioSummary(dataMap);
+        document.getElementById("lastUpdated").innerText = `資料時間：${session.timeStr}（證交所/櫃買官方即時盤校準）`;
+        document.getElementById("macroSummary").innerHTML = summaryObj.htmlSummary;
 
-        if (adviceObj.riskWarning) {
+        if (summaryObj.riskWarning) {
           const riskBox = document.getElementById("riskAlertBox");
-          riskBox.innerText = `⚠️ 風險提示：${adviceObj.riskWarning}`;
+          riskBox.innerText = `⚠️ 風險提示：${summaryObj.riskWarning}`;
           riskBox.classList.remove("hidden");
         }
 
         const strategyContainer = document.getElementById("strategyCards");
         strategyContainer.innerHTML = holdings.map(h => {
-          const adv = (adviceObj.advices || []).find(a => a.code === h.code);
+          const adv = (summaryObj.advices || []).find(a => a.code === h.code);
           const chgClass = (h.dayChangePct || 0) >= 0 ? "up" : "down";
           const bias = calcBias20(h.currentPrice, h.ma20);
           return `
             <div class="p-3.5 rounded-xl bg-[#161c28] border border-gray-800 hover:border-gray-700 transition">
               <div class="flex justify-between items-center mb-1.5">
                 <span class="font-bold text-white">${h.code} <span class="font-normal text-gray-300">${h.name}</span></span>
-                <span class="text-xs font-semibold ${chgClass}">${h.currentPrice ? h.currentPrice.toFixed(2) : "--"} (${(h.dayChangePct || 0) >= 0 ? '+' : ''}${(h.dayChangePct || 0).toFixed(2)}%)</span>
+                <span class="text-xs font-semibold ${chgClass}">${h.currentPrice ? h.currentPrice.toFixed(2) : "--"} (${fmtSigned(h.dayChangePct, 2)}%)</span>
               </div>
               <div class="flex justify-between items-center text-xs text-gray-400 mb-2 pb-1.5 border-b border-gray-800/80">
                 <span>月線 (20MA)：${h.ma20 ? h.ma20.toFixed(2) : "--"}</span>
@@ -509,7 +581,7 @@
           `;
         }).join("");
 
-        showToast("✅ 戰情室報價、7線走勢圖與 20MA 乖離率已同步更新！");
+        showToast("✅ 已同步證交所/櫃買最新成交價與國際市場指標！");
       } catch (err) {
         showToast("❌ 執行異常：" + err.message, "error");
       } finally {
@@ -579,11 +651,12 @@
       const fullDates = (data.taiexData && data.taiexData.fullDates) || (firstValid && firstValid.fullDates) || labels;
 
       const datasets = [];
-
-      // 第 1 條：整體投資組合加權累計報酬率主曲線
       const seriesLen = labels.length;
+
+      let portfolioDailySeries = [];
       if (seriesLen > 0) {
         const portfolioSeries = [];
+        const portfolioVals = [];
         let basePortfolioVal = 0;
         holdings.forEach((h, idx) => {
           const q = data.stockQuotes[idx];
@@ -601,6 +674,9 @@
                 dayVal += h.shares * q.closesSeries[d];
               }
             });
+            portfolioVals.push(dayVal);
+            const prevV = d > 0 ? portfolioVals[d - 1] : dayVal;
+            portfolioDailySeries.push(Number((((dayVal - prevV) / prevV) * 100).toFixed(2)));
             portfolioSeries.push(Number((((dayVal - basePortfolioVal) / basePortfolioVal) * 100).toFixed(2)));
           }
 
@@ -616,7 +692,6 @@
         }
       }
 
-      // 第 2 條：加權指數 (TAIEX)
       if (data.taiexData) {
         datasets.push({
           label: "加權指數 (TAIEX)",
@@ -629,7 +704,6 @@
         });
       }
 
-      // 第 3~7 條：各檔持股曲線
       holdings.forEach((h, idx) => {
         const q = data.stockQuotes[idx];
         if (q) {
@@ -654,7 +728,7 @@
           plugins: {
             legend: { labels: { color: "#cbd5e1", font: { size: 11 } } },
             tooltip: {
-              backgroundColor: "rgba(15, 23, 42, 0.95)",
+              backgroundColor: "rgba(15, 23, 42, 0.96)",
               borderColor: "#334155",
               borderWidth: 1,
               callbacks: {
@@ -662,16 +736,24 @@
                 label: ctx => {
                   const idx = ctx.dataIndex;
                   const lbl = ctx.dataset.label;
-                  const ret = ctx.parsed.y;
-                  const retStr = `${ret >= 0 ? '+' : ''}${ret}%`;
+                  const cumRet = ctx.parsed.y;
+                  const cumStr = `${cumRet >= 0 ? '+' : ''}${cumRet}%`;
+
+                  if (lbl === "⭐ 整體投資組合") {
+                    const dChg = portfolioDailySeries[idx] ?? 0;
+                    return `${lbl}: 當日 ${fmtSigned(dChg, 2)}% ｜ 累計 ${cumStr}`;
+                  }
                   if (lbl === "加權指數 (TAIEX)" && data.taiexData && data.taiexData.closesSeries) {
-                    return `${lbl}: ${data.taiexData.closesSeries[idx].toLocaleString()} 點 (${retStr})`;
+                    const dChg = data.taiexData.dailyChangeSeries ? data.taiexData.dailyChangeSeries[idx] : 0;
+                    return `${lbl}: ${data.taiexData.closesSeries[idx].toLocaleString()} 點｜當日 ${fmtSigned(dChg, 2)}%｜累計 ${cumStr}`;
                   }
                   const hIdx = holdings.findIndex(h => lbl.startsWith(h.code));
                   if (hIdx >= 0 && data.stockQuotes[hIdx] && data.stockQuotes[hIdx].closesSeries) {
-                    return `${lbl}: ${data.stockQuotes[hIdx].closesSeries[idx]} 元 (${retStr})`;
+                    const q = data.stockQuotes[hIdx];
+                    const dChg = q.dailyChangeSeries ? q.dailyChangeSeries[idx] : 0;
+                    return `${lbl}: ${q.closesSeries[idx]} 元｜當日 ${fmtSigned(dChg, 2)}%｜累計 ${cumStr}`;
                   }
-                  return `${lbl}: ${retStr}`;
+                  return `${lbl}: 累計 ${cumStr}`;
                 }
               }
             }
@@ -684,7 +766,7 @@
                 maxRotation: 0,
                 callback: function(val, index) {
                   const total = this.chart.data.labels.length;
-                  if (index === 0 || index === total - 1 || index % 4 === 0) {
+                  if (index === 0 || index === total - 1 || (index % 5 === 0 && index < total - 2)) {
                     return this.getLabelForValue(val);
                   }
                   return "";
